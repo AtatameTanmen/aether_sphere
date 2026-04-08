@@ -40,72 +40,59 @@ impl HalfEdgeMesh {
             .collect();
         let faces_num = indices.len() / 3;
         let mut faces: Vec<Face> = vec![Face { half_edge: INVALID }; faces_num];
-        let mut half_edges: Vec<HalfEdge> = Vec::new();
+        let mut half_edges: Vec<HalfEdge> = Vec::with_capacity(3 * faces_num);
         let mut edge_map: HashMap<(usize, usize), usize> = HashMap::new();
-        let mut face_index: usize = 0;
 
-        while face_index < faces_num {
-            let vertex_index0 = indices[3 * face_index];
-            let vertex_index1 = indices[3 * face_index + 1];
-            let vertex_index2 = indices[3 * face_index + 2];
-            let edge_index0 = half_edges.len();
-            let edge_index1 = edge_index0 + 1;
-            let edge_index2 = edge_index0 + 2;
+        for (face_index, vertex_indices) in indices.as_chunks::<3>().0.iter().enumerate() {
+            let face_index3 = 3 * face_index;
+            let edge_indices = [face_index3, face_index3 + 1, face_index3 + 2];
 
-            faces[face_index].half_edge = edge_index0;
+            faces[face_index].half_edge = edge_indices[0];
 
             half_edges.push(HalfEdge {
-                vertex: vertex_index0,
+                vertex: vertex_indices[0],
                 face: face_index,
-                next: edge_index1,
-                prev: edge_index2,
+                next: edge_indices[1],
+                prev: edge_indices[2],
                 twin: INVALID,
             });
             half_edges.push(HalfEdge {
-                vertex: vertex_index1,
+                vertex: vertex_indices[1],
                 face: face_index,
-                next: edge_index2,
-                prev: edge_index0,
+                next: edge_indices[2],
+                prev: edge_indices[0],
                 twin: INVALID,
             });
             half_edges.push(HalfEdge {
-                vertex: vertex_index2,
+                vertex: vertex_indices[2],
                 face: face_index,
-                next: edge_index0,
-                prev: edge_index1,
+                next: edge_indices[0],
+                prev: edge_indices[1],
                 twin: INVALID,
             });
 
-            if vertices[vertex_index0].half_edge == INVALID {
-                vertices[vertex_index0].half_edge = edge_index0;
-            }
-            if vertices[vertex_index1].half_edge == INVALID {
-                vertices[vertex_index1].half_edge = edge_index1;
-            }
-            if vertices[vertex_index2].half_edge == INVALID {
-                vertices[vertex_index2].half_edge = edge_index2;
-            }
+            vertices[vertex_indices[0]].half_edge = edge_indices[0];
+            vertices[vertex_indices[1]].half_edge = edge_indices[1];
+            vertices[vertex_indices[2]].half_edge = edge_indices[2];
 
-            if let Some(&twin) = edge_map.get(&(vertex_index1, vertex_index0)) {
-                half_edges[edge_index0].twin = twin;
-                half_edges[twin].twin = edge_index0;
+            if let Some(&twin0) = edge_map.get(&(vertex_indices[1], vertex_indices[0])) {
+                half_edges[edge_indices[0]].twin = twin0;
+                half_edges[twin0].twin = edge_indices[0];
             } else {
-                edge_map.insert((vertex_index0, vertex_index1), edge_index0);
+                edge_map.insert((vertex_indices[0], vertex_indices[1]), edge_indices[0]);
             }
-            if let Some(&twin) = edge_map.get(&(vertex_index2, vertex_index1)) {
-                half_edges[edge_index1].twin = twin;
-                half_edges[twin].twin = edge_index1;
+            if let Some(&twin1) = edge_map.get(&(vertex_indices[2], vertex_indices[1])) {
+                half_edges[edge_indices[1]].twin = twin1;
+                half_edges[twin1].twin = edge_indices[1];
             } else {
-                edge_map.insert((vertex_index1, vertex_index2), edge_index1);
+                edge_map.insert((vertex_indices[1], vertex_indices[2]), edge_indices[1]);
             }
-            if let Some(&twin) = edge_map.get(&(vertex_index0, vertex_index2)) {
-                half_edges[edge_index2].twin = twin;
-                half_edges[twin].twin = edge_index2;
+            if let Some(&twin2) = edge_map.get(&(vertex_indices[0], vertex_indices[2])) {
+                half_edges[edge_indices[2]].twin = twin2;
+                half_edges[twin2].twin = edge_indices[2];
             } else {
-                edge_map.insert((vertex_index2, vertex_index0), edge_index2);
+                edge_map.insert((vertex_indices[2], vertex_indices[0]), edge_indices[2]);
             }
-
-            face_index += 1;
         }
 
         Self {
