@@ -32,6 +32,8 @@ pub struct HalfEdgeMesh {
 }
 
 impl HalfEdgeMesh {
+
+    /// 頂点リストとインデックスリストからハーフエッジ構造を生成するメソッド
     pub fn from_vertices_indices(vertices: &Vec<[f64; 3]>, indices: &Vec<usize>) -> Self {
         let mut vertices: Vec<Vertex> = vertices
             .iter()
@@ -104,6 +106,26 @@ impl HalfEdgeMesh {
         }
     }
 
+    /// ハーフエッジ構造からトライアングルリストを生成するメソッド
+    /// 
+    /// すべてのfaceが三角形である必要がある
+    pub fn into_triangle_list(&self) -> Vec<[f64; 3]> {
+        let mut result: Vec<[f64; 3]> = Vec::with_capacity(3 * self.faces.len());
+        
+        for face in self.faces.iter() {
+            let mut edge = &self.half_edges[face.half_edge];
+            result.push(self.vertices[edge.vertex].position);
+            edge = &self.half_edges[edge.next];
+            result.push(self.vertices[edge.vertex].position);
+            edge = &self.half_edges[edge.next];
+            result.push(self.vertices[edge.vertex].position);
+        }
+
+        result
+    }
+
+    /// ハーフエッジ構造が正しいかどうかを判定するメソッド
+    /// 
     /// 完全に閉じたメッシュを正しく表している場合、真を返す
     pub fn check(&self) -> bool {
         let edges_num = self.half_edges.len();
