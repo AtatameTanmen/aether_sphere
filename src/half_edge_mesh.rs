@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+pub mod ico_sphere;
+
+use bevy::platform::collections::HashMap;
 
 const INVALID: usize = usize::MAX;
 
@@ -30,7 +32,7 @@ pub struct HalfEdgeMesh {
 }
 
 impl HalfEdgeMesh {
-    pub fn from_triangle_list(vertices: &Vec<[f64; 3]>, indices: &Vec<usize>) -> Self {
+    pub fn from_vertices_indices(vertices: &Vec<[f64; 3]>, indices: &Vec<usize>) -> Self {
         let mut vertices: Vec<Vertex> = vertices
             .iter()
             .map(|&x| Vertex {
@@ -100,5 +102,42 @@ impl HalfEdgeMesh {
             faces,
             half_edges,
         }
+    }
+
+    /// 完全に閉じたメッシュを正しく表している場合、真を返す
+    pub fn check(&self) -> bool {
+        let edges_num = self.half_edges.len();
+        for (edge_index, edge) in self.half_edges.iter().enumerate() {
+            if edge.twin >= edges_num
+                || edge.next >= edges_num
+                || self.half_edges[edge.twin].next >= edges_num
+                || {
+                    let twin = &self.half_edges[edge.twin];
+                    let next = &self.half_edges[edge.next];
+                    let twin_next = &self.half_edges[twin.next];
+
+                    twin.twin != edge_index
+                        || next.prev != edge_index
+                        || next.face != edge.face
+                        || twin_next.vertex != edge.vertex
+                }
+            {
+                return false;
+            }
+        }
+
+        for (face_index, face) in self.faces.iter().enumerate() {
+            if face.half_edge >= edges_num || self.half_edges[face.half_edge].face != face_index {
+                return false;
+            }
+        }
+
+        for (vertex_index, vertex) in self.vertices.iter().enumerate() {
+            if vertex.half_edge >= edges_num || self.half_edges[vertex.half_edge].vertex != vertex_index {
+                return false;
+            }
+        }
+        
+        return true;
     }
 }
