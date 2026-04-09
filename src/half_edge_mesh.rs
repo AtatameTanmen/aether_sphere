@@ -110,18 +110,37 @@ impl HalfEdgeMesh {
     /// 
     /// すべてのfaceが三角形である必要がある
     pub fn into_triangle_list(&self) -> Vec<[f64; 3]> {
-        let mut result: Vec<[f64; 3]> = Vec::with_capacity(3 * self.faces.len());
+        let mut triangle_list: Vec<[f64; 3]> = Vec::with_capacity(3 * self.faces.len());
         
         for face in self.faces.iter() {
             let mut edge = &self.half_edges[face.half_edge];
-            result.push(self.vertices[edge.vertex].position);
+            triangle_list.push(self.vertices[edge.vertex].position);
             edge = &self.half_edges[edge.next];
-            result.push(self.vertices[edge.vertex].position);
+            triangle_list.push(self.vertices[edge.vertex].position);
             edge = &self.half_edges[edge.next];
-            result.push(self.vertices[edge.vertex].position);
+            triangle_list.push(self.vertices[edge.vertex].position);
         }
 
-        result
+        triangle_list
+    }
+
+    /// ハーフエッジ構造から頂点リストとインデックスリストを生成するメソッド
+    /// 
+    /// すべてのfaceが三角形である必要がある
+    pub fn into_vertices_indices(&self) -> (Vec<[f64; 3]>, Vec<usize>) {
+        let vertices: Vec<[f64; 3]> = self.vertices.iter().map(|x| x.position).collect();
+        let mut indices: Vec<usize> = Vec::with_capacity(3 * self.faces.len());
+
+        for face in self.faces.iter() {
+            let mut edge = &self.half_edges[face.half_edge];
+            indices.push(edge.vertex);
+            edge = &self.half_edges[edge.next];
+            indices.push(edge.vertex);
+            edge = &self.half_edges[edge.next];
+            indices.push(edge.vertex);
+        }
+
+        (vertices, indices)
     }
 
     /// ハーフエッジ構造が正しいかどうかを判定するメソッド
