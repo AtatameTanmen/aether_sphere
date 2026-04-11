@@ -192,19 +192,23 @@ pub fn make_ico_sphere(n: usize) -> HalfEdgeMesh {
                 twin: new_edge_index6,
             });
 
-            faces.push(Face { // 0
+            faces.push(Face {
+                // 0
                 half_edge: new_edge_index0,
             });
 
-            faces.push(Face { // 1
+            faces.push(Face {
+                // 1
                 half_edge: new_edge_index2,
             });
 
-            faces.push(Face { // 2
+            faces.push(Face {
+                // 2
                 half_edge: new_edge_index4,
             });
 
-            faces.push(Face { // 3
+            faces.push(Face {
+                // 3
                 half_edge: new_edge_index7,
             });
         }
@@ -232,10 +236,110 @@ impl HalfEdgeMesh {
             (point1[2] + point2[2]),
         ])
     }
+
+    pub fn move_centroid(&mut self, n: usize) {
+        for _ in 0..n {
+            let old_vertices = self.vertices.clone();
+            let vertices = &mut self.vertices;
+            let faces = &self.faces;
+            let half_edges = &self.half_edges;
+
+            let mut circumcenters: Vec<[f64; 3]> = Vec::with_capacity(faces.len());
+            for face in faces.iter() {
+                let mut edge_index = face.half_edge;
+                let p0 = old_vertices[half_edges[edge_index].vertex].position;
+                edge_index = half_edges[edge_index].next;
+                let p1 = old_vertices[half_edges[edge_index].vertex].position;
+                edge_index = half_edges[edge_index].next;
+                let p2 = old_vertices[half_edges[edge_index].vertex].position;
+
+                let v1 = subtract(p1, p0);
+                let v2 = subtract(p2, p0);
+
+                let v1v1 = dot(v1, v1);
+                let v1v2 = dot(v1, v2);
+                let v2v2 = dot(v2, v2);
+
+                let divisor = 0.5 / (v1v1 * v2v2 - v1v2 * v1v2);
+
+                let c1 = (v1v1 * v2v2 - v2v2 * v1v2) * divisor;
+                let c2 = (-v1v1 * v1v2 + v2v2 * v1v1) * divisor;
+
+                circumcenters.push(add(p0, add(scalar_product(c1, v1), scalar_product(c2, v2))));
+            }
+
+            for (vertex_index, old_vertex) in old_vertices.iter().enumerate() {
+                let p0 = old_vertex.position;
+                let mut edge_index = old_vertex.half_edge;
+                let mut p1 = circumcenters[half_edges[edge_index].face];
+                let mut result: [f64; 3] = [0.0, 0.0, 0.0];
+                let mut area: f64 = 0.0;
+
+                loop {
+                    edge_index = half_edges[half_edges[edge_index].prev].twin;
+                    let p2 = circumcenters[half_edges[edge_index].face];
+
+                    let v1 = subtract(p1, p0);
+                    let v2 = subtract(p2, p0);
+
+                    let t_area = vec_abs(cross(v1, v2));
+                    result = add(result, scalar_product(t_area, add(v1, v2)));
+                    area += t_area;
+
+                    p1 = p2;
+                    if edge_index == old_vertex.half_edge {
+                        break;
+                    }
+                }
+
+                let divisor = 1.0 / (3.0 * area);
+                vertices[vertex_index].position =
+                    normalize(add(p0, scalar_product(divisor, result)));
+            }
+        }
+    }
+
+    pub fn scale(&mut self, s: f64) {
+        for vertex in self.vertices.iter_mut() {
+            vertex.position = scalar_product(s, vertex.position);
+        }
+    }
 }
 
 fn normalize(mut point: [f64; 3]) -> [f64; 3] {
     let length = (point[0].powi(2) + point[1].powi(2) + point[2].powi(2)).sqrt();
     point.iter_mut().for_each(|x| *x /= length);
     point
+}
+
+fn subtract(minuend: [f64; 3], subtrahend: [f64; 3]) -> [f64; 3] {
+    [
+        minuend[0] - subtrahend[0],
+        minuend[1] - subtrahend[1],
+        minuend[2] - subtrahend[2],
+    ]
+}
+
+fn add(vec1: [f64; 3], vec2: [f64; 3]) -> [f64; 3] {
+    [vec1[0] + vec2[0], vec1[1] + vec2[1], vec1[2] + vec2[2]]
+}
+
+fn dot(vec1: [f64; 3], vec2: [f64; 3]) -> f64 {
+    vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2]
+}
+
+fn scalar_product(scalar: f64, vec: [f64; 3]) -> [f64; 3] {
+    [scalar * vec[0], scalar * vec[1], scalar * vec[2]]
+}
+
+fn cross(vec1: [f64; 3], vec2: [f64; 3]) -> [f64; 3] {
+    [
+        vec1[1] * vec2[2] - vec1[2] * vec2[1],
+        vec1[2] * vec2[0] - vec1[0] * vec2[2],
+        vec1[0] * vec2[1] - vec1[1] * vec2[0],
+    ]
+}
+
+fn vec_abs(vec: [f64; 3]) -> f64 {
+    dot(vec, vec).sqrt()
 }

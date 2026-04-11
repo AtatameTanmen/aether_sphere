@@ -4,7 +4,7 @@ use bevy::platform::collections::HashMap;
 
 const INVALID: usize = usize::MAX;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Vertex {
     position: [f64; 3],
     half_edge: usize,
