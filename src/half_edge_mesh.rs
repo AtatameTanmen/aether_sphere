@@ -32,7 +32,6 @@ pub struct HalfEdgeMesh {
 }
 
 impl HalfEdgeMesh {
-
     /// 頂点リストとインデックスリストからハーフエッジ構造を生成するメソッド
     pub fn from_vertices_indices(vertices: &Vec<[f64; 3]>, indices: &Vec<usize>) -> Self {
         let mut vertices: Vec<Vertex> = vertices
@@ -107,11 +106,11 @@ impl HalfEdgeMesh {
     }
 
     /// ハーフエッジ構造からトライアングルリストを生成するメソッド
-    /// 
+    ///
     /// すべてのfaceが三角形である必要がある
     pub fn into_triangle_list(&self) -> Vec<[f64; 3]> {
         let mut triangle_list: Vec<[f64; 3]> = Vec::with_capacity(3 * self.faces.len());
-        
+
         for face in self.faces.iter() {
             let mut edge = &self.half_edges[face.half_edge];
             triangle_list.push(self.vertices[edge.vertex].position);
@@ -125,7 +124,7 @@ impl HalfEdgeMesh {
     }
 
     /// ハーフエッジ構造から頂点リストとインデックスリストを生成するメソッド
-    /// 
+    ///
     /// すべてのfaceが三角形である必要がある
     pub fn into_vertices_indices(&self) -> (Vec<[f64; 3]>, Vec<usize>) {
         let vertices: Vec<[f64; 3]> = self.vertices.iter().map(|x| x.position).collect();
@@ -144,7 +143,7 @@ impl HalfEdgeMesh {
     }
 
     /// ハーフエッジ構造が正しいかどうかを判定するメソッド
-    /// 
+    ///
     /// 完全に閉じたメッシュを正しく表している場合、真を返す
     pub fn check(&self) -> bool {
         let edges_num = self.half_edges.len();
@@ -174,11 +173,13 @@ impl HalfEdgeMesh {
         }
 
         for (vertex_index, vertex) in self.vertices.iter().enumerate() {
-            if vertex.half_edge >= edges_num || self.half_edges[vertex.half_edge].vertex != vertex_index {
+            if vertex.half_edge >= edges_num
+                || self.half_edges[vertex.half_edge].vertex != vertex_index
+            {
                 return false;
             }
         }
-        
+
         return true;
     }
 }
