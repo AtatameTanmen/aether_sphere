@@ -1,4 +1,4 @@
-use aether_sphere::half_edge_mesh::ico_sphere::*;
+use aether_sphere::mesh::half_edge_mesh::ico_sphere::*;
 use bevy::{
     asset::RenderAssetUsages,
     mesh::Indices,
