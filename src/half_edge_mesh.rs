@@ -15,7 +15,7 @@ struct Face {
     half_edge: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct HalfEdge {
     vertex: usize,
     face: usize,
@@ -33,7 +33,7 @@ pub struct HalfEdgeMesh {
 
 impl HalfEdgeMesh {
     /// 頂点リストとインデックスリストからハーフエッジ構造を生成するメソッド
-    pub fn from_vertices_indices(vertices: &Vec<[f64; 3]>, indices: &Vec<usize>) -> Self {
+    fn from_vertices_indices(vertices: &Vec<[f64; 3]>, indices: &Vec<usize>) -> Self {
         let mut vertices: Vec<Vertex> = vertices
             .iter()
             .map(|&x| Vertex {
@@ -103,83 +103,5 @@ impl HalfEdgeMesh {
             faces,
             half_edges,
         }
-    }
-
-    /// ハーフエッジ構造からトライアングルリストを生成するメソッド
-    ///
-    /// すべてのfaceが三角形である必要がある
-    pub fn into_triangle_list(&self) -> Vec<[f64; 3]> {
-        let mut triangle_list: Vec<[f64; 3]> = Vec::with_capacity(3 * self.faces.len());
-
-        for face in self.faces.iter() {
-            let mut edge = &self.half_edges[face.half_edge];
-            triangle_list.push(self.vertices[edge.vertex].position);
-            edge = &self.half_edges[edge.next];
-            triangle_list.push(self.vertices[edge.vertex].position);
-            edge = &self.half_edges[edge.next];
-            triangle_list.push(self.vertices[edge.vertex].position);
-        }
-
-        triangle_list
-    }
-
-    /// ハーフエッジ構造から頂点リストとインデックスリストを生成するメソッド
-    ///
-    /// すべてのfaceが三角形である必要がある
-    pub fn into_vertices_indices(&self) -> (Vec<[f64; 3]>, Vec<usize>) {
-        let vertices: Vec<[f64; 3]> = self.vertices.iter().map(|x| x.position).collect();
-        let mut indices: Vec<usize> = Vec::with_capacity(3 * self.faces.len());
-
-        for face in self.faces.iter() {
-            let mut edge = &self.half_edges[face.half_edge];
-            indices.push(edge.vertex);
-            edge = &self.half_edges[edge.next];
-            indices.push(edge.vertex);
-            edge = &self.half_edges[edge.next];
-            indices.push(edge.vertex);
-        }
-
-        (vertices, indices)
-    }
-
-    /// ハーフエッジ構造が正しいかどうかを判定するメソッド
-    ///
-    /// 完全に閉じたメッシュを正しく表している場合、真を返す
-    pub fn check(&self) -> bool {
-        let edges_num = self.half_edges.len();
-        for (edge_index, edge) in self.half_edges.iter().enumerate() {
-            if edge.twin >= edges_num
-                || edge.next >= edges_num
-                || self.half_edges[edge.twin].next >= edges_num
-                || {
-                    let twin = &self.half_edges[edge.twin];
-                    let next = &self.half_edges[edge.next];
-                    let twin_next = &self.half_edges[twin.next];
-
-                    twin.twin != edge_index
-                        || next.prev != edge_index
-                        || next.face != edge.face
-                        || twin_next.vertex != edge.vertex
-                }
-            {
-                return false;
-            }
-        }
-
-        for (face_index, face) in self.faces.iter().enumerate() {
-            if face.half_edge >= edges_num || self.half_edges[face.half_edge].face != face_index {
-                return false;
-            }
-        }
-
-        for (vertex_index, vertex) in self.vertices.iter().enumerate() {
-            if vertex.half_edge >= edges_num
-                || self.half_edges[vertex.half_edge].vertex != vertex_index
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

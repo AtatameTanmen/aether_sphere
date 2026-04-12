@@ -33,23 +33,15 @@ fn setup(
         Transform::default().looking_to(vec3(-4.0, -3.0, -1.0), vec3(0.0, 1.0, 0.0)),
     ));
 
-    let mut sphere = make_ico_sphere(6);
-    sphere.move_centroid(30);
-    sphere.scale(10.0);
+    let sphere = IcoSphere::make_sphere(10.0, 6, 30);
     let (vertices, indices) = sphere.into_vertices_indices();
 
     let mesh = Mesh::new(
         bevy::mesh::PrimitiveTopology::TriangleList,
         RenderAssetUsages::RENDER_WORLD,
     )
-    .with_inserted_attribute(
-        Mesh::ATTRIBUTE_POSITION,
-        vertices
-            .iter()
-            .map(|v| [v[0] as f32, v[1] as f32, v[2] as f32])
-            .collect::<Vec<[f32; 3]>>(),
-    )
-    .with_inserted_indices(Indices::U32(indices.iter().map(|&x| x as u32).collect()))
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
+    .with_inserted_indices(Indices::U32(indices))
     .with_computed_normals();
 
     commands.spawn((

@@ -1,33 +1,108 @@
-use crate::half_edge_mesh::{Face, HalfEdge, HalfEdgeMesh, INVALID, Vertex};
+use super::*;
 
-const A: f64 = 0.5257311121191336;
-const B: f64 = 0.8506508083520399;
+pub struct IcoSphere {
+    mesh: HalfEdgeMesh,
+}
 
-pub const VERTICES: [[f64; 3]; 12] = [
-    [A, B, 0.0],
-    [-A, B, 0.0],
-    [-A, -B, 0.0],
-    [A, -B, 0.0],
-    [0.0, A, B],
-    [0.0, -A, B],
-    [0.0, -A, -B],
-    [0.0, A, -B],
-    [B, 0.0, A],
-    [B, 0.0, -A],
-    [-B, 0.0, -A],
-    [-B, 0.0, A],
-];
+impl IcoSphere {
+    const A: f64 = 0.5257311121191336;
+    const B: f64 = 0.8506508083520399;
 
-pub const INDICES: [usize; 60] = [
-    0, 1, 4, 0, 4, 8, 0, 8, 9, 0, 9, 7, 0, 7, 1, 1, 7, 10, 1, 10, 11, 1, 11, 4, 2, 3, 5, 2, 5, 11,
-    2, 11, 10, 2, 10, 6, 2, 6, 3, 3, 6, 9, 3, 9, 8, 3, 8, 5, 4, 11, 5, 4, 5, 8, 6, 10, 7, 6, 7, 9,
-];
+    const VERTICES: [[f64; 3]; 12] = [
+        [Self::A, Self::B, 0.0],
+        [-Self::A, Self::B, 0.0],
+        [-Self::A, -Self::B, 0.0],
+        [Self::A, -Self::B, 0.0],
+        [0.0, Self::A, Self::B],
+        [0.0, -Self::A, Self::B],
+        [0.0, -Self::A, -Self::B],
+        [0.0, Self::A, -Self::B],
+        [Self::B, 0.0, Self::A],
+        [Self::B, 0.0, -Self::A],
+        [-Self::B, 0.0, -Self::A],
+        [-Self::B, 0.0, Self::A],
+    ];
 
-pub fn make_ico_sphere(n: usize) -> HalfEdgeMesh {
-    let mut sphere = HalfEdgeMesh::from_vertices_indices(&VERTICES.to_vec(), &INDICES.to_vec());
-    for _ in 0..n {
-        let (old_vertices, old_faces, old_edges) =
-            (&sphere.vertices, &sphere.faces, &sphere.half_edges);
+    const INDICES: [usize; 60] = [
+        0, 1, 4, 0, 4, 8, 0, 8, 9, 0, 9, 7, 0, 7, 1, 1, 7, 10, 1, 10, 11, 1, 11, 4, 2, 3, 5, 2, 5,
+        11, 2, 11, 10, 2, 10, 6, 2, 6, 3, 3, 6, 9, 3, 9, 8, 3, 8, 5, 4, 11, 5, 4, 5, 8, 6, 10, 7,
+        6, 7, 9,
+    ];
+
+    pub fn make_sphere(radius: f64, subdivision_level: usize, lloyd_iterations: usize) -> Self {
+        let mut sphere = Self::initial_sphere();
+        for _ in 0..subdivision_level {
+            sphere.subdivision();
+        }
+        for _ in 0..lloyd_iterations {
+            sphere.lloyd_step();
+        }
+        sphere.scale(radius);
+
+        sphere
+    }
+
+    pub fn into_vertices_indices(&self) -> (Vec<[f32; 3]>, Vec<u32>) {
+        let mesh = &self.mesh;
+        let vertices: Vec<[f32; 3]> = mesh
+            .vertices
+            .iter()
+            .map(|v| {
+                [
+                    v.position[0] as f32,
+                    v.position[1] as f32,
+                    v.position[2] as f32,
+                ]
+            })
+            .collect();
+        let mut indices: Vec<u32> = Vec::with_capacity(3 * mesh.faces.len());
+
+        for face in mesh.faces.iter() {
+            let edge1 = &mesh.half_edges[face.half_edge];
+            let edge2 = &mesh.half_edges[edge1.next];
+            let edge3 = &mesh.half_edges[edge2.next];
+
+            indices.push(edge1.vertex as u32);
+            indices.push(edge2.vertex as u32);
+            indices.push(edge3.vertex as u32);
+        }
+
+        (vertices, indices)
+    }
+
+    pub fn into_triangle_list(&self) -> Vec<[f32; 3]> {
+        let mesh = &self.mesh;
+        let mut triangle_list: Vec<[f32; 3]> = Vec::with_capacity(3 * mesh.faces.len());
+
+        for face in mesh.faces.iter() {
+            let edge1 = &mesh.half_edges[face.half_edge];
+            let edge2 = &mesh.half_edges[edge1.next];
+            let edge3 = &mesh.half_edges[edge2.next];
+
+            let pos1 = mesh.vertices[edge1.vertex].position;
+            let pos2 = mesh.vertices[edge2.vertex].position;
+            let pos3 = mesh.vertices[edge3.vertex].position;
+
+            triangle_list.push([pos1[0] as f32, pos1[1] as f32, pos1[2] as f32]);
+            triangle_list.push([pos2[0] as f32, pos2[1] as f32, pos2[2] as f32]);
+            triangle_list.push([pos3[0] as f32, pos3[1] as f32, pos3[2] as f32]);
+        }
+
+        triangle_list
+    }
+
+    fn initial_sphere() -> Self {
+        Self {
+            mesh: HalfEdgeMesh::from_vertices_indices(
+                &Self::VERTICES.to_vec(),
+                &Self::INDICES.to_vec(),
+            ),
+        }
+    }
+
+    fn subdivision(&mut self) {
+        let mesh = &mut self.mesh;
+        let (old_vertices, old_faces, old_edges) = (&mesh.vertices, &mesh.faces, &mesh.half_edges);
         let old_vertices_num = old_vertices.len();
         let old_faces_num = old_faces.len();
         let old_edges_num = old_edges.len();
@@ -77,7 +152,7 @@ pub fn make_ico_sphere(n: usize) -> HalfEdgeMesh {
                 half_edges[new_edge_index1].vertex = mid_vertex_index;
             } else {
                 let mid_vertex_index = vertices.len();
-                let mid_point = sphere.mid_point(old_edge_index);
+                let mid_point = mesh.mid_point(old_edge_index);
 
                 vertices.push(Vertex {
                     position: mid_point,
@@ -213,14 +288,78 @@ pub fn make_ico_sphere(n: usize) -> HalfEdgeMesh {
             });
         }
 
-        sphere = HalfEdgeMesh {
+        *mesh = HalfEdgeMesh {
             vertices,
             faces,
             half_edges,
         };
     }
 
-    sphere
+    fn lloyd_step(&mut self) {
+        let mesh = &mut self.mesh;
+        let old_vertices = mesh.vertices.clone();
+        let vertices = &mut mesh.vertices;
+        let faces = &mesh.faces;
+        let half_edges = &mesh.half_edges;
+
+        let mut circumcenters: Vec<[f64; 3]> = Vec::with_capacity(faces.len());
+        for face in faces.iter() {
+            let mut edge_index = face.half_edge;
+            let p0 = old_vertices[half_edges[edge_index].vertex].position;
+            edge_index = half_edges[edge_index].next;
+            let p1 = old_vertices[half_edges[edge_index].vertex].position;
+            edge_index = half_edges[edge_index].next;
+            let p2 = old_vertices[half_edges[edge_index].vertex].position;
+
+            let v1 = subtract(p1, p0);
+            let v2 = subtract(p2, p0);
+
+            let v1v1 = dot(v1, v1);
+            let v1v2 = dot(v1, v2);
+            let v2v2 = dot(v2, v2);
+
+            let divisor = 0.5 / (v1v1 * v2v2 - v1v2 * v1v2);
+
+            let c1 = (v1v1 * v2v2 - v2v2 * v1v2) * divisor;
+            let c2 = (-v1v1 * v1v2 + v2v2 * v1v1) * divisor;
+
+            circumcenters.push(add(p0, add(scalar_product(c1, v1), scalar_product(c2, v2))));
+        }
+
+        for (vertex_index, old_vertex) in old_vertices.iter().enumerate() {
+            let p0 = old_vertex.position;
+            let mut edge_index = old_vertex.half_edge;
+            let mut p1 = circumcenters[half_edges[edge_index].face];
+            let mut result: [f64; 3] = [0.0, 0.0, 0.0];
+            let mut area: f64 = 0.0;
+
+            loop {
+                edge_index = half_edges[half_edges[edge_index].prev].twin;
+                let p2 = circumcenters[half_edges[edge_index].face];
+
+                let v1 = subtract(p1, p0);
+                let v2 = subtract(p2, p0);
+
+                let t_area = vec_abs(cross(v1, v2));
+                result = add(result, scalar_product(t_area, add(v1, v2)));
+                area += t_area;
+
+                p1 = p2;
+                if edge_index == old_vertex.half_edge {
+                    break;
+                }
+            }
+
+            let divisor = 1.0 / (3.0 * area);
+            vertices[vertex_index].position = normalize(add(p0, scalar_product(divisor, result)));
+        }
+    }
+
+    pub fn scale(&mut self, s: f64) {
+        for vertex in self.mesh.vertices.iter_mut() {
+            vertex.position = scalar_product(s, vertex.position);
+        }
+    }
 }
 
 impl HalfEdgeMesh {
@@ -235,74 +374,6 @@ impl HalfEdgeMesh {
             (point1[1] + point2[1]),
             (point1[2] + point2[2]),
         ])
-    }
-
-    pub fn move_centroid(&mut self, n: usize) {
-        for _ in 0..n {
-            let old_vertices = self.vertices.clone();
-            let vertices = &mut self.vertices;
-            let faces = &self.faces;
-            let half_edges = &self.half_edges;
-
-            let mut circumcenters: Vec<[f64; 3]> = Vec::with_capacity(faces.len());
-            for face in faces.iter() {
-                let mut edge_index = face.half_edge;
-                let p0 = old_vertices[half_edges[edge_index].vertex].position;
-                edge_index = half_edges[edge_index].next;
-                let p1 = old_vertices[half_edges[edge_index].vertex].position;
-                edge_index = half_edges[edge_index].next;
-                let p2 = old_vertices[half_edges[edge_index].vertex].position;
-
-                let v1 = subtract(p1, p0);
-                let v2 = subtract(p2, p0);
-
-                let v1v1 = dot(v1, v1);
-                let v1v2 = dot(v1, v2);
-                let v2v2 = dot(v2, v2);
-
-                let divisor = 0.5 / (v1v1 * v2v2 - v1v2 * v1v2);
-
-                let c1 = (v1v1 * v2v2 - v2v2 * v1v2) * divisor;
-                let c2 = (-v1v1 * v1v2 + v2v2 * v1v1) * divisor;
-
-                circumcenters.push(add(p0, add(scalar_product(c1, v1), scalar_product(c2, v2))));
-            }
-
-            for (vertex_index, old_vertex) in old_vertices.iter().enumerate() {
-                let p0 = old_vertex.position;
-                let mut edge_index = old_vertex.half_edge;
-                let mut p1 = circumcenters[half_edges[edge_index].face];
-                let mut result: [f64; 3] = [0.0, 0.0, 0.0];
-                let mut area: f64 = 0.0;
-
-                loop {
-                    edge_index = half_edges[half_edges[edge_index].prev].twin;
-                    let p2 = circumcenters[half_edges[edge_index].face];
-
-                    let v1 = subtract(p1, p0);
-                    let v2 = subtract(p2, p0);
-
-                    let t_area = vec_abs(cross(v1, v2));
-                    result = add(result, scalar_product(t_area, add(v1, v2)));
-                    area += t_area;
-
-                    p1 = p2;
-                    if edge_index == old_vertex.half_edge {
-                        break;
-                    }
-                }
-
-                let divisor = 1.0 / (3.0 * area);
-                vertices[vertex_index].position =
-                    normalize(add(p0, scalar_product(divisor, result)));
-            }
-        }
-    }
-
-    pub fn scale(&mut self, s: f64) {
-        for vertex in self.vertices.iter_mut() {
-            vertex.position = scalar_product(s, vertex.position);
-        }
     }
 }
 
