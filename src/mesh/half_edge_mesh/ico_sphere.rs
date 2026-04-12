@@ -8,25 +8,90 @@ impl IcoSphere {
     const A: f64 = 0.5257311121191336;
     const B: f64 = 0.8506508083520399;
 
-    const VERTICES: [[f64; 3]; 12] = [
-        [Self::A, Self::B, 0.0],
-        [-Self::A, Self::B, 0.0],
-        [-Self::A, -Self::B, 0.0],
-        [Self::A, -Self::B, 0.0],
-        [0.0, Self::A, Self::B],
-        [0.0, -Self::A, Self::B],
-        [0.0, -Self::A, -Self::B],
-        [0.0, Self::A, -Self::B],
-        [Self::B, 0.0, Self::A],
-        [Self::B, 0.0, -Self::A],
-        [-Self::B, 0.0, -Self::A],
-        [-Self::B, 0.0, Self::A],
+    const VERTICES: [F64x3; 12] = [
+        F64x3 {
+            x: Self::A,
+            y: Self::B,
+            z: 0.0,
+        },
+        F64x3 {
+            x: -Self::A,
+            y: Self::B,
+            z: 0.0,
+        },
+        F64x3 {
+            x: -Self::A,
+            y: -Self::B,
+            z: 0.0,
+        },
+        F64x3 {
+            x: Self::A,
+            y: -Self::B,
+            z: 0.0,
+        },
+        F64x3 {
+            x: 0.0,
+            y: Self::A,
+            z: Self::B,
+        },
+        F64x3 {
+            x: 0.0,
+            y: -Self::A,
+            z: Self::B,
+        },
+        F64x3 {
+            x: 0.0,
+            y: -Self::A,
+            z: -Self::B,
+        },
+        F64x3 {
+            x: 0.0,
+            y: Self::A,
+            z: -Self::B,
+        },
+        F64x3 {
+            x: Self::B,
+            y: 0.0,
+            z: Self::A,
+        },
+        F64x3 {
+            x: Self::B,
+            y: 0.0,
+            z: -Self::A,
+        },
+        F64x3 {
+            x: -Self::B,
+            y: 0.0,
+            z: -Self::A,
+        },
+        F64x3 {
+            x: -Self::B,
+            y: 0.0,
+            z: Self::A,
+        },
     ];
 
-    const INDICES: [usize; 60] = [
-        0, 1, 4, 0, 4, 8, 0, 8, 9, 0, 9, 7, 0, 7, 1, 1, 7, 10, 1, 10, 11, 1, 11, 4, 2, 3, 5, 2, 5,
-        11, 2, 11, 10, 2, 10, 6, 2, 6, 3, 3, 6, 9, 3, 9, 8, 3, 8, 5, 4, 11, 5, 4, 5, 8, 6, 10, 7,
-        6, 7, 9,
+    const INDICES: [[usize; 3]; 20] = [
+        [0, 1, 4],
+        [0, 4, 8],
+        [0, 8, 9],
+        [0, 9, 7],
+        [0, 7, 1],
+        [1, 7, 10],
+        [1, 10, 11],
+        [1, 11, 4],
+        [2, 3, 5],
+        [2, 5, 11],
+        [2, 11, 10],
+        [2, 10, 6],
+        [2, 6, 3],
+        [3, 6, 9],
+        [3, 9, 8],
+        [3, 8, 5],
+        [4, 11, 5],
+        [4, 5, 8],
+        [6, 10, 7],
+        [6, 7, 9],
     ];
 
     pub fn make_sphere(radius: f64, subdivision_level: usize, lloyd_iterations: usize) -> Self {
@@ -44,18 +109,8 @@ impl IcoSphere {
 
     pub fn into_vertices_indices(&self) -> (Vec<[f32; 3]>, Vec<u32>) {
         let mesh = &self.mesh;
-        let vertices: Vec<[f32; 3]> = mesh
-            .vertices
-            .iter()
-            .map(|v| {
-                [
-                    v.position[0] as f32,
-                    v.position[1] as f32,
-                    v.position[2] as f32,
-                ]
-            })
-            .collect();
-        let mut indices: Vec<u32> = Vec::with_capacity(3 * mesh.faces.len());
+        let vertices: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| v.position.into()).collect();
+        let mut indices: Vec<u32> = Vec::with_capacity(mesh.faces.len() * 3);
 
         for face in mesh.faces.iter() {
             let edge1 = &mesh.half_edges[face.half_edge];
@@ -72,7 +127,7 @@ impl IcoSphere {
 
     pub fn into_triangle_list(&self) -> Vec<[f32; 3]> {
         let mesh = &self.mesh;
-        let mut triangle_list: Vec<[f32; 3]> = Vec::with_capacity(3 * mesh.faces.len());
+        let mut triangle_list: Vec<[f32; 3]> = Vec::with_capacity(mesh.faces.len() * 3);
 
         for face in mesh.faces.iter() {
             let edge1 = &mesh.half_edges[face.half_edge];
@@ -83,9 +138,9 @@ impl IcoSphere {
             let pos2 = mesh.vertices[edge2.vertex].position;
             let pos3 = mesh.vertices[edge3.vertex].position;
 
-            triangle_list.push([pos1[0] as f32, pos1[1] as f32, pos1[2] as f32]);
-            triangle_list.push([pos2[0] as f32, pos2[1] as f32, pos2[2] as f32]);
-            triangle_list.push([pos3[0] as f32, pos3[1] as f32, pos3[2] as f32]);
+            triangle_list.push(pos1.into());
+            triangle_list.push(pos2.into());
+            triangle_list.push(pos3.into());
         }
 
         triangle_list
@@ -93,10 +148,7 @@ impl IcoSphere {
 
     fn initial_sphere() -> Self {
         Self {
-            mesh: HalfEdgeMesh::from_vertices_indices(
-                &Self::VERTICES.to_vec(),
-                &Self::INDICES.to_vec(),
-            ),
+            mesh: HalfEdgeMesh::from_vertices_indices(&Self::VERTICES, &Self::INDICES),
         }
     }
 
@@ -302,46 +354,51 @@ impl IcoSphere {
         let faces = &mesh.faces;
         let half_edges = &mesh.half_edges;
 
-        let mut circumcenters: Vec<[f64; 3]> = Vec::with_capacity(faces.len());
+        let mut circumcenters: Vec<F64x3> = Vec::with_capacity(faces.len());
         for face in faces.iter() {
-            let mut edge_index = face.half_edge;
-            let p0 = old_vertices[half_edges[edge_index].vertex].position;
-            edge_index = half_edges[edge_index].next;
-            let p1 = old_vertices[half_edges[edge_index].vertex].position;
-            edge_index = half_edges[edge_index].next;
-            let p2 = old_vertices[half_edges[edge_index].vertex].position;
+            let edge_index0 = face.half_edge;
+            let edge_index1 = half_edges[edge_index0].next;
+            let edge_index2 = half_edges[edge_index1].next;
 
-            let v1 = subtract(p1, p0);
-            let v2 = subtract(p2, p0);
+            let p0 = old_vertices[half_edges[edge_index0].vertex].position;
+            let p1 = old_vertices[half_edges[edge_index1].vertex].position;
+            let p2 = old_vertices[half_edges[edge_index2].vertex].position;
 
-            let v1v1 = dot(v1, v1);
-            let v1v2 = dot(v1, v2);
-            let v2v2 = dot(v2, v2);
+            let v1 = p1 - p0;
+            let v2 = p2 - p0;
+
+            let v1v1 = v1.dot(v1);
+            let v1v2 = v1.dot(v2);
+            let v2v2 = v2.dot(v2);
 
             let divisor = 0.5 / (v1v1 * v2v2 - v1v2 * v1v2);
 
             let c1 = (v1v1 * v2v2 - v2v2 * v1v2) * divisor;
             let c2 = (-v1v1 * v1v2 + v2v2 * v1v1) * divisor;
 
-            circumcenters.push(add(p0, add(scalar_product(c1, v1), scalar_product(c2, v2))));
+            circumcenters.push(p0 + v1 * c1 + v2 * c2);
         }
 
         for (vertex_index, old_vertex) in old_vertices.iter().enumerate() {
             let p0 = old_vertex.position;
             let mut edge_index = old_vertex.half_edge;
             let mut p1 = circumcenters[half_edges[edge_index].face];
-            let mut result: [f64; 3] = [0.0, 0.0, 0.0];
+            let mut result: F64x3 = F64x3 {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            };
             let mut area: f64 = 0.0;
 
             loop {
                 edge_index = half_edges[half_edges[edge_index].prev].twin;
                 let p2 = circumcenters[half_edges[edge_index].face];
 
-                let v1 = subtract(p1, p0);
-                let v2 = subtract(p2, p0);
+                let v1 = p1 - p0;
+                let v2 = p2 - p0;
 
-                let t_area = vec_abs(cross(v1, v2));
-                result = add(result, scalar_product(t_area, add(v1, v2)));
+                let t_area = v1.cross(v2).norm();
+                result += (v1 + v2) * t_area;
                 area += t_area;
 
                 p1 = p2;
@@ -351,66 +408,24 @@ impl IcoSphere {
             }
 
             let divisor = 1.0 / (3.0 * area);
-            vertices[vertex_index].position = normalize(add(p0, scalar_product(divisor, result)));
+            vertices[vertex_index].position = (p0 + result * divisor).normalize();
         }
     }
 
     pub fn scale(&mut self, s: f64) {
         for vertex in self.mesh.vertices.iter_mut() {
-            vertex.position = scalar_product(s, vertex.position);
+            vertex.position *= s;
         }
     }
 }
 
 impl HalfEdgeMesh {
-    fn mid_point(&self, edge_index: usize) -> [f64; 3] {
+    fn mid_point(&self, edge_index: usize) -> F64x3 {
         let cur_edge = &self.half_edges[edge_index];
         let next_edge = &self.half_edges[cur_edge.next];
         let point1 = self.vertices[cur_edge.vertex].position;
         let point2 = self.vertices[next_edge.vertex].position;
 
-        normalize([
-            (point1[0] + point2[0]),
-            (point1[1] + point2[1]),
-            (point1[2] + point2[2]),
-        ])
+        (point1 + point2).normalize()
     }
-}
-
-fn normalize(mut point: [f64; 3]) -> [f64; 3] {
-    let length = (point[0].powi(2) + point[1].powi(2) + point[2].powi(2)).sqrt();
-    point.iter_mut().for_each(|x| *x /= length);
-    point
-}
-
-fn subtract(minuend: [f64; 3], subtrahend: [f64; 3]) -> [f64; 3] {
-    [
-        minuend[0] - subtrahend[0],
-        minuend[1] - subtrahend[1],
-        minuend[2] - subtrahend[2],
-    ]
-}
-
-fn add(vec1: [f64; 3], vec2: [f64; 3]) -> [f64; 3] {
-    [vec1[0] + vec2[0], vec1[1] + vec2[1], vec1[2] + vec2[2]]
-}
-
-fn dot(vec1: [f64; 3], vec2: [f64; 3]) -> f64 {
-    vec1[0] * vec2[0] + vec1[1] * vec2[1] + vec1[2] * vec2[2]
-}
-
-fn scalar_product(scalar: f64, vec: [f64; 3]) -> [f64; 3] {
-    [scalar * vec[0], scalar * vec[1], scalar * vec[2]]
-}
-
-fn cross(vec1: [f64; 3], vec2: [f64; 3]) -> [f64; 3] {
-    [
-        vec1[1] * vec2[2] - vec1[2] * vec2[1],
-        vec1[2] * vec2[0] - vec1[0] * vec2[2],
-        vec1[0] * vec2[1] - vec1[1] * vec2[0],
-    ]
-}
-
-fn vec_abs(vec: [f64; 3]) -> f64 {
-    dot(vec, vec).sqrt()
 }

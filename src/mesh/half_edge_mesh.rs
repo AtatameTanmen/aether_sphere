@@ -1,12 +1,13 @@
 pub mod ico_sphere;
 
+use crate::mesh::f64x3::F64x3;
 use bevy::platform::collections::HashMap;
 
 const INVALID: usize = usize::MAX;
 
 #[derive(Debug, Clone)]
 struct Vertex {
-    position: [f64; 3],
+    position: F64x3,
     half_edge: usize,
 }
 
@@ -32,8 +33,8 @@ pub struct HalfEdgeMesh {
 }
 
 impl HalfEdgeMesh {
-    /// 頂点リストとインデックスリストからハーフエッジ構造を生成するメソッド
-    fn from_vertices_indices(vertices: &Vec<[f64; 3]>, indices: &Vec<usize>) -> Self {
+    /// 頂点リストと三角形インデックスリストからハーフエッジ構造を生成するメソッド
+    fn from_vertices_indices(vertices: &[F64x3], indices: &[[usize; 3]]) -> Self {
         let mut vertices: Vec<Vertex> = vertices
             .iter()
             .map(|&x| Vertex {
@@ -41,13 +42,13 @@ impl HalfEdgeMesh {
                 half_edge: INVALID,
             })
             .collect();
-        let faces_num = indices.len() / 3;
+        let faces_num = indices.len();
         let mut faces: Vec<Face> = vec![Face { half_edge: INVALID }; faces_num];
         let mut half_edges: Vec<HalfEdge> = Vec::with_capacity(3 * faces_num);
         let mut edge_map: HashMap<(usize, usize), usize> = HashMap::new();
 
-        for (face_index, vertex_indices) in indices.as_chunks::<3>().0.iter().enumerate() {
-            let face_index3 = 3 * face_index;
+        for (face_index, vertex_indices) in indices.iter().enumerate() {
+            let face_index3 = face_index * 3;
             let edge_indices = [face_index3, face_index3 + 1, face_index3 + 2];
 
             faces[face_index].half_edge = edge_indices[0];

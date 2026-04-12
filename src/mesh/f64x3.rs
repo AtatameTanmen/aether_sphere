@@ -12,7 +12,7 @@ impl F64x3 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 
-    pub fn cross(self, rhs: Self) -> F64x3 {
+    pub fn cross(self, rhs: Self) -> Self {
         F64x3 {
             x: self.y * rhs.z - self.z * rhs.y,
             y: self.z * rhs.x - self.x * rhs.z,
@@ -24,9 +24,9 @@ impl F64x3 {
         self.dot(self).sqrt()
     }
 
-    pub fn normalize(&mut self) {
+    pub fn normalize(&self) -> Self {
         let norm = self.norm();
-        *self /= norm;
+        *self / norm
     }
 }
 
