@@ -2,7 +2,7 @@ use bevy::{
     asset::RenderAssetUsages, prelude::*, render::render_resource::AsBindGroup, shader::ShaderRef,
 };
 
-const SHADER_ASSET_PATH: &str = "shaders/example_triangle.wgsl";
+const SHADER_ASSET_PATH: &str = "examples/triangle_texture/shaders/fragment.wgsl";
 
 fn main() {
     App::new()
