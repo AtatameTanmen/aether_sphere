@@ -50,4 +50,4 @@ AetherSphere は、球体表面上で流体（風や水）の挙動をシミュ�
 ## References
 
 - [A unified approach to energy conservation and potential vorticity dynamics for arbitrarily structured C-grids](https://doi.org/10.1016/j.jcp.2009.12.007)  
-質量セルと渦度セルのエッジが直交する任意のCグリッド（任意のボロノイ図とそれに双対なドロネー図など）における浅水方程式の数値解法における、エネルギー保存とポテンシャル渦度保存に関する研究
+質量セルと渦度セルのエッジが直交する任意のCグリッド（任意のボロノイ図とそれに双対なドロネー図など）を用いた浅水方程式の数値解法において、エネルギー保存とポテンシャル渦度保存に関する研究
