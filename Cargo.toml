@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.18", features = ["dynamic_linking", "debug"] }
+bevy = { version = "0.19", features = ["dynamic_linking", "debug"] }
+bytemuck = "1.25.0"
 
 [profile.dev]
 opt-level = 1
